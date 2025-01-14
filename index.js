@@ -37,6 +37,18 @@ const verifyToken = (req, res, next) => {
   });
 };
 
+// Admin Verification Middleware
+const verifyAdmin = async (req, res, next) => {
+  const email = req.user?.email;
+  const query = { email };
+  const result = await usersCollection.findOne(query);
+  if (!result || result?.role !== 'admin') {
+    return res.status(403).send({ message: 'Forbidden Access! Admin Only Actions!' });
+  }
+
+  next();
+};
+
 // Generate JWT token
 app.post('/jwt', (req, res) => {
   const { email } = req.body;
@@ -54,14 +66,17 @@ app.post('/jwt', (req, res) => {
 
 // Logout Route
 app.get('/logout', (req, res) => {
-  // Clear cookies or handle logout logic here
   res.send({ message: 'Logged out successfully' });
 });
-
 
 // Protected Route Example
 app.get('/protected', verifyToken, (req, res) => {
   res.send({ message: 'This is a protected route.', user: req.user });
+});
+
+// Admin Only Route Example
+app.get('/admin-only', verifyToken, verifyAdmin, (req, res) => {
+  res.send({ message: 'This is an admin-only route.' });
 });
 
 // Database Connection
@@ -79,7 +94,7 @@ async function run() {
     await client.connect();
     console.log('Pinged your deployment. Successfully connected to MongoDB!');
 
-    const usersCollection = client.db('your_database_name').collection('users');
+    const usersCollection = client.db('ProtikshaNews').collection('users');
 
     app.post('/users/:email', async (req, res) => {
       const email = req.params.email;
