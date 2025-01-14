@@ -49,36 +49,6 @@ const verifyAdmin = async (req, res, next) => {
   next();
 };
 
-// Generate JWT token
-app.post('/jwt', (req, res) => {
-  const { email } = req.body;
-
-  if (!email) {
-    return res.status(400).send({ message: 'Email is required.' });
-  }
-
-  const token = jwt.sign({ email }, process.env.ACCESS_TOKEN_SECRET, {
-    expiresIn: '7d',
-  });
-
-  res.send({ success: true, token });
-});
-
-// Logout Route
-app.get('/logout', (req, res) => {
-  res.send({ message: 'Logged out successfully' });
-});
-
-// Protected Route Example
-app.get('/protected', verifyToken, (req, res) => {
-  res.send({ message: 'This is a protected route.', user: req.user });
-});
-
-// Admin Only Route Example
-app.get('/admin-only', verifyToken, verifyAdmin, (req, res) => {
-  res.send({ message: 'This is an admin-only route.' });
-});
-
 // Database Connection
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.2a8vu.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 const client = new MongoClient(uri, {
@@ -96,6 +66,22 @@ async function run() {
 
     const usersCollection = client.db('ProtikshaNews').collection('users');
 
+    // Generate JWT token
+    app.post('/jwt', (req, res) => {
+      const { email } = req.body;
+
+      if (!email) {
+        return res.status(400).send({ message: 'Email is required.' });
+      }
+
+      const token = jwt.sign({ email }, process.env.ACCESS_TOKEN_SECRET, {
+        expiresIn: '7d',
+      });
+
+      res.send({ success: true, token });
+    });
+
+    // Save user in DB
     app.post('/users/:email', async (req, res) => {
       const email = req.params.email;
       const query = { email };
@@ -113,6 +99,41 @@ async function run() {
       });
       res.send(result);
     });
+
+    // Update User Role (Admin Only)
+    app.patch('/users/role/:email', verifyToken, verifyAdmin, async (req, res) => {
+      const email = req.params.email;
+      const { role } = req.body;
+
+      if (!role) {
+        return res.status(400).send({ message: 'Role is required.' });
+      }
+
+      const result = await usersCollection.updateOne(
+        { email },
+        { $set: { role } }
+      );
+
+      if (result.modifiedCount === 0) {
+        return res.status(404).send({ message: 'User not found or role already set.' });
+      }
+
+      res.send({ message: 'Role updated successfully.' });
+    });
+
+    // Get User Role
+    app.get('/users/role/:email', async (req, res) => {
+      const email = req.params.email;
+      const query = { email };
+      const user = await usersCollection.findOne(query);
+
+      if (!user) {
+        return res.status(404).send({ message: 'User not found.' });
+      }
+
+      res.send({ role: user.role });
+    });
+
   } catch (err) {
     console.error(err);
   }
