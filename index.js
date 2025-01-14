@@ -134,6 +134,31 @@ async function run() {
       res.send({ role: user.role });
     });
 
+    // Get All Users
+    app.get('/users', async (req, res) => {
+      const { search } = req.query;
+      const query = search
+        ? {
+            $or: [
+              { name: { $regex: search, $options: 'i' } },
+              { email: { $regex: search, $options: 'i' } },
+            ],
+          }
+        : {};
+
+      const result = await usersCollection.find(query).toArray();
+      res.send(result);
+    });
+
+    // Get User By Email
+    app.get('/users/:email', verifyToken, async (req, res) => {
+      const email = req.params.email;
+      const query = { email };
+      const result = await usersCollection.findOne(query);
+      res.send(result);
+    });
+    
+
   } catch (err) {
     console.error(err);
   }
