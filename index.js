@@ -77,11 +77,51 @@ async function run() {
     });
 
      // articles req post
-     app.post('/articles-req', verifyToken, async (req, res) => {
-      const articlesReqData = req.body;
-      const result = await articlesReqCollection.insertOne(articlesReqData);
-      res.send(result);
-  })
+      app.post('/articles-req', verifyToken, async (req, res) => {
+        const articlesReqData = req.body;
+        const result = await articlesReqCollection.insertOne({
+          ...articlesReqData,
+          approved: false, // Add an 'approved' field with a default value of false
+        });
+        res.send(result);
+      });
+
+
+     // article request get
+app.get('/articles-req', verifyToken, async (req, res) => {
+  try {
+    const result = await articlesReqCollection.find().toArray();
+    res.send(result);
+  } catch (error) {
+    console.error('Error fetching article requests:', error);
+    res.status(500).send({ message: 'Error fetching article requests' });
+  }
+});
+
+
+      // article aprove
+      app.patch('/approve-article/:id', verifyToken, async (req, res) => {
+        const { id } = req.params;
+        const { isApproved } = req.body; // 'isApproved' will be passed as true or false
+    
+        if (isApproved === undefined) {
+            return res.status(400).send({ message: 'Approval status is required.' });
+        }
+    
+        const result = await articlesReqCollection.updateOne(
+            { _id: new ObjectId(id) },
+            { $set: { approved: isApproved } }
+        );
+    
+        if (result.modifiedCount > 0) {
+            res.send({ message: 'Article approval status updated.' });
+        } else {
+            res.status(404).send({ message: 'Article not found.' });
+        }
+    });
+    
+      
+  
 
     // Get All Publishers
     app.get('/publishers', async (req, res) => {
