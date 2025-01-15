@@ -36,6 +36,7 @@ async function run() {
 
     const usersCollection = client.db('ProtikshaNews').collection('users');
     const publishersCollection = client.db('ProtikshaNews').collection('publishers');
+    const articlesReqCollection = client.db('ProtikshaNews').collection('articles');
 
     // JWT Verification Middleware
     const verifyToken = (req, res, next) => {
@@ -75,15 +76,22 @@ async function run() {
       }
     });
 
+     // articles req post
+     app.post('/articles-req', verifyToken, async (req, res) => {
+      const articlesReqData = req.body;
+      const result = await articlesReqCollection.insertOne(articlesReqData);
+      res.send(result);
+  })
+
     // Get All Publishers
-app.get('/publishers', async (req, res) => {
-  try {
-    const publishers = await publishersCollection.find().toArray();
-    res.send(publishers);
-  } catch (error) {
-    res.status(500).send({ message: 'Error fetching publishers', error });
-  }
-});
+    app.get('/publishers', async (req, res) => {
+      try {
+        const publishers = await publishersCollection.find().toArray();
+        res.send(publishers);
+      } catch (error) {
+        res.status(500).send({ message: 'Error fetching publishers', error });
+      }
+    });
 
 
     // Generate JWT token
