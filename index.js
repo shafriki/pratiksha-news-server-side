@@ -75,6 +75,17 @@ async function run() {
       }
     });
 
+    // Get All Publishers
+app.get('/publishers', async (req, res) => {
+  try {
+    const publishers = await publishersCollection.find().toArray();
+    res.send(publishers);
+  } catch (error) {
+    res.status(500).send({ message: 'Error fetching publishers', error });
+  }
+});
+
+
     // Generate JWT token
     app.post('/jwt', (req, res) => {
       const { email } = req.body;
