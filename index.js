@@ -19,33 +19,6 @@ app.use(cors(corsOptions));
 app.use(express.json());
 app.use(morgan('dev'));
 
-// JWT Verification Middleware
-const verifyToken = (req, res, next) => {
-  if (!req.headers.authorization) {
-    return res.status(401).send({ message: 'forbidden access' });
-  }
-  const token = req.headers.authorization.split(' ')[1];
-  jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
-    if (err) {
-      return res.status(401).send({ message: 'forbidden access' });
-    }
-    req.decoded = decoded;
-    next();
-  });
-};
-
-// Admin Verification Middleware
-const verifyAdmin = async (req, res, next) => {
-  const email = req.decoded.email;
-  const query = { email: email };
-  const user = await usersCollection.findOne(query);
-  const isAdmin = user?.role === 'admin';
-  if (!isAdmin) {
-    return res.status(403).send({ message: 'forbidden access' });
-  }
-  next();
-};
-
 // Database Connection
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.2a8vu.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 const client = new MongoClient(uri, {
@@ -64,14 +37,43 @@ async function run() {
     const usersCollection = client.db('ProtikshaNews').collection('users');
     const publishersCollection = client.db('ProtikshaNews').collection('publishers');
 
-    // publishers
-    app.post('/publishers', async (req, res) => {
+    // JWT Verification Middleware
+    const verifyToken = (req, res, next) => {
+      if (!req.headers.authorization) {
+        return res.status(401).send({ message: 'forbidden access' });
+      }
+      const token = req.headers.authorization.split(' ')[1];
+      jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
+        if (err) {
+          return res.status(401).send({ message: 'forbidden access' });
+        }
+        req.decoded = decoded;
+        next();
+      });
+    };
+
+    // Admin Verification Middleware
+    const verifyAdmin = async (req, res, next) => {
+      const email = req.decoded.email;
+      const query = { email: email };
+      const user = await usersCollection.findOne(query);
+      const isAdmin = user?.role === 'admin';
+      if (!isAdmin) {
+        return res.status(403).send({ message: 'forbidden access' });
+      }
+      next();
+    };
+
+    // Publishers
+    app.post('/publishers', verifyToken, verifyAdmin, async (req, res) => {
       const item = req.body;
       const result = await publishersCollection.insertOne(item);
-      res.send(result);
+      if (result.acknowledged) {
+        res.send({ success: true, message: 'Publisher added successfully' });
+      } else {
+        res.status(500).send({ message: 'Error adding publisher' });
+      }
     });
-    
-
 
     // Generate JWT token
     app.post('/jwt', (req, res) => {
