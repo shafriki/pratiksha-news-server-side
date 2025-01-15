@@ -4,6 +4,7 @@ const cors = require('cors');
 const morgan = require('morgan');
 const jwt = require('jsonwebtoken');
 const { MongoClient, ServerApiVersion } = require('mongodb');
+const { ObjectId } = require('mongodb'); // Import ObjectId for MongoDB
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -75,6 +76,30 @@ async function run() {
         res.status(500).send({ message: 'Error adding publisher' });
       }
     });
+
+
+
+    // Update user role to "admin"
+    app.patch('/users/admin/:id', verifyToken, verifyAdmin, async (req, res) => {
+        const { id } = req.params; // Extract user ID from params
+
+        try {
+            const result = await usersCollection.updateOne(
+                { _id: new ObjectId(id) }, // Find user by _id
+                { $set: { role: "admin" } } // Set role to "admin"
+            );
+
+            if (result.modifiedCount > 0) {
+                res.send({ message: "User role updated to admin.", modifiedCount: result.modifiedCount });
+            } else {
+                res.status(404).send({ message: "User not found or role already set." });
+            }
+        } catch (error) {
+            console.error("Error updating user role:", error);
+            res.status(500).send({ message: "Failed to update user role.", error });
+        }
+    });
+
 
      // articles req post
       app.post('/articles-req', verifyToken, async (req, res) => {
