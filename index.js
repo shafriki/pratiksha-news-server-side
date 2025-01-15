@@ -21,31 +21,28 @@ app.use(morgan('dev'));
 
 // JWT Verification Middleware
 const verifyToken = (req, res, next) => {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
-
-  if (!token) {
-    return res.status(401).send({ message: 'Unauthorized access. Token is missing.' });
+  if (!req.headers.authorization) {
+    return res.status(401).send({ message: 'forbidden access' });
   }
-
+  const token = req.headers.authorization.split(' ')[1];
   jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
     if (err) {
-      return res.status(403).send({ message: 'Forbidden. Invalid token.' });
+      return res.status(401).send({ message: 'forbidden access' });
     }
-    req.user = decoded;
+    req.decoded = decoded;
     next();
   });
 };
 
 // Admin Verification Middleware
 const verifyAdmin = async (req, res, next) => {
-  const email = req.user?.email;
-  const query = { email };
-  const result = await usersCollection.findOne(query);
-  if (!result || result?.role !== 'admin') {
-    return res.status(403).send({ message: 'Forbidden Access! Admin Only Actions!' });
+  const email = req.decoded.email;
+  const query = { email: email };
+  const user = await usersCollection.findOne(query);
+  const isAdmin = user?.role === 'admin';
+  if (!isAdmin) {
+    return res.status(403).send({ message: 'forbidden access' });
   }
-
   next();
 };
 
@@ -65,6 +62,16 @@ async function run() {
     console.log('Pinged your deployment. Successfully connected to MongoDB!');
 
     const usersCollection = client.db('ProtikshaNews').collection('users');
+    const publishersCollection = client.db('ProtikshaNews').collection('publishers');
+
+    // publishers
+    app.post('/publishers', async (req, res) => {
+      const item = req.body;
+      const result = await publishersCollection.insertOne(item);
+      res.send(result);
+    });
+    
+
 
     // Generate JWT token
     app.post('/jwt', (req, res) => {
@@ -157,7 +164,6 @@ async function run() {
       const result = await usersCollection.findOne(query);
       res.send(result);
     });
-    
 
   } catch (err) {
     console.error(err);
