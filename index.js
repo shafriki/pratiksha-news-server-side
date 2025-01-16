@@ -110,16 +110,24 @@ async function run() {
         res.send(result);
       });
 
-      // article request get
-    app.get('/articles-req',  async (req, res) => {
-      try {
-        const result = await articlesReqCollection.find().toArray();
-        res.send(result);
-      } catch (error) {
-        console.error('Error fetching article requests:', error);
-        res.status(500).send({ message: 'Error fetching article requests' });
-      }
-    });
+     // article request get with search by title
+app.get('/articles-req', async (req, res) => {
+  const { searchTerm } = req.query;  // Get search term from the query parameters
+  
+  try {
+    // Build the query to search by title if a search term is provided
+    const query = searchTerm
+      ? { title: { $regex: searchTerm, $options: 'i' } }  // case-insensitive search
+      : {};  // No search term, return all articles
+    
+    const result = await articlesReqCollection.find(query).toArray();
+    res.send(result);
+  } catch (error) {
+    console.error('Error fetching article requests:', error);
+    res.status(500).send({ message: 'Error fetching article requests' });
+  }
+});
+
 
 
      
