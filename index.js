@@ -4,7 +4,7 @@ const cors = require('cors');
 const morgan = require('morgan');
 const jwt = require('jsonwebtoken');
 const { MongoClient, ServerApiVersion } = require('mongodb');
-const { ObjectId } = require('mongodb'); // Import ObjectId for MongoDB
+const { ObjectId } = require('mongodb'); 
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -81,12 +81,12 @@ async function run() {
 
     // Update user role to "admin"
     app.patch('/users/admin/:id', verifyToken, verifyAdmin, async (req, res) => {
-        const { id } = req.params; // Extract user ID from params
+        const { id } = req.params; 
 
         try {
             const result = await usersCollection.updateOne(
-                { _id: new ObjectId(id) }, // Find user by _id
-                { $set: { role: "admin" } } // Set role to "admin"
+                { _id: new ObjectId(id) }, 
+                { $set: { role: "admin" } } 
             );
 
             if (result.modifiedCount > 0) {
@@ -110,15 +110,15 @@ async function run() {
         res.send(result);
       });
 
-     // article request get with search by title
+     
       app.get('/articles-req', async (req, res) => {
-        const { searchTerm } = req.query;  // Get search term from the query parameters
+        const { searchTerm } = req.query;  
         
         try {
-          // Build the query to search by title if a search term is provided
+       
           const query = searchTerm
-            ? { title: { $regex: searchTerm, $options: 'i' } }  // case-insensitive search
-            : {};  // No search term, return all articles
+            ? { title: { $regex: searchTerm, $options: 'i' } }  
+            : {};  
           
           const result = await articlesReqCollection.find(query).toArray();
           res.send(result);
@@ -136,7 +136,7 @@ async function run() {
         res.send(result);
     })
 
-    // Add a new route to update the view count
+    // articles view count related api
     app.put('/articles-req/view/:id', async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
@@ -144,7 +144,7 @@ async function run() {
       try {
           const result = await articlesReqCollection.updateOne(
               query,
-              { $inc: { viewCount: 1 } } // Increment the view count by 1
+              { $inc: { viewCount: 1 } } 
           );
           
           if (result.modifiedCount > 0) {
@@ -156,6 +156,22 @@ async function run() {
           res.status(500).send({ message: 'Error updating view count', error });
       }
     });
+
+
+    // trending article related api
+    app.get('/trending-articles', async (req, res) => {
+      try {
+          const result = await articlesReqCollection
+              .find()
+              .sort({ viewCount: -1 })  // Sort by view count in descending order
+              .limit(6)  // Limit to 6 articles
+              .toArray();
+          res.send(result);
+      } catch (error) {
+          res.status(500).send({ message: 'Error fetching trending articles', error });
+      }
+    });
+
 
     
 
