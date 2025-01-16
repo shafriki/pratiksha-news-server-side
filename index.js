@@ -110,9 +110,8 @@ async function run() {
         res.send(result);
       });
 
-
-     // article request get
-    app.get('/articles-req', verifyToken, async (req, res) => {
+      // article request get
+    app.get('/articles-req',  async (req, res) => {
       try {
         const result = await articlesReqCollection.find().toArray();
         res.send(result);
@@ -121,6 +120,10 @@ async function run() {
         res.status(500).send({ message: 'Error fetching article requests' });
       }
     });
+
+
+     
+    
 
   // article approve
   app.patch('/articles-req/approve/:id', verifyToken, verifyAdmin, async (req, res) => {
