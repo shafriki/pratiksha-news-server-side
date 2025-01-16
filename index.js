@@ -128,13 +128,35 @@ async function run() {
         }
       });
 
-      //get single course
+      //get single articles
       app.get('/articles-req/:id', async (req, res) => {
         const id = req.params.id
         const query = { _id: new ObjectId(id) }
         const result = await articlesReqCollection.findOne(query)
         res.send(result);
     })
+
+    // Add a new route to update the view count
+    app.put('/articles-req/view/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+
+      try {
+          const result = await articlesReqCollection.updateOne(
+              query,
+              { $inc: { viewCount: 1 } } // Increment the view count by 1
+          );
+          
+          if (result.modifiedCount > 0) {
+              res.send({ message: 'View count updated successfully!' });
+          } else {
+              res.status(404).send({ message: 'Article not found!' });
+          }
+      } catch (error) {
+          res.status(500).send({ message: 'Error updating view count', error });
+      }
+    });
+
     
 
   // article approve
