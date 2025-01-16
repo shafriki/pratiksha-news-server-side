@@ -154,11 +154,11 @@ app.get('/articles-req', async (req, res) => {
       const updatedDoc = {
         $set: {
           status: 'Rejected', // Update status field to 'Rejected'
-          approved: false // If you want to maintain the approved field as well
+          approved: false 
         }
       };
       const result = await articlesReqCollection.updateOne(filter, updatedDoc);
-      res.send(result); // Ensure the result is sent back
+      res.send(result); 
     });
 
     
