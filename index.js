@@ -106,44 +106,50 @@ async function run() {
         const articlesReqData = req.body;
         const result = await articlesReqCollection.insertOne({
           ...articlesReqData,
-          approved: false, // Add an 'approved' field with a default value of false
         });
         res.send(result);
       });
 
 
      // article request get
-app.get('/articles-req', verifyToken, async (req, res) => {
-  try {
-    const result = await articlesReqCollection.find().toArray();
-    res.send(result);
-  } catch (error) {
-    console.error('Error fetching article requests:', error);
-    res.status(500).send({ message: 'Error fetching article requests' });
-  }
-});
-
-
-      // article aprove
-      app.patch('/approve-article/:id', verifyToken, async (req, res) => {
-        const { id } = req.params;
-        const { isApproved } = req.body; // 'isApproved' will be passed as true or false
-    
-        if (isApproved === undefined) {
-            return res.status(400).send({ message: 'Approval status is required.' });
-        }
-    
-        const result = await articlesReqCollection.updateOne(
-            { _id: new ObjectId(id) },
-            { $set: { approved: isApproved } }
-        );
-    
-        if (result.modifiedCount > 0) {
-            res.send({ message: 'Article approval status updated.' });
-        } else {
-            res.status(404).send({ message: 'Article not found.' });
-        }
+    app.get('/articles-req', verifyToken, async (req, res) => {
+      try {
+        const result = await articlesReqCollection.find().toArray();
+        res.send(result);
+      } catch (error) {
+        console.error('Error fetching article requests:', error);
+        res.status(500).send({ message: 'Error fetching article requests' });
+      }
     });
+
+  // article approve
+  app.patch('/articles-req/approve/:id', verifyToken, verifyAdmin, async (req, res) => {
+    const id = req.params.id;
+    const filter = { _id: new ObjectId(id) };
+    const updatedDoc = {
+      $set: {
+        status: 'Approved', // Update status field to 'Approved'
+        approved: true // If you want to maintain the approved field as well
+      }
+    };
+    const result = await articlesReqCollection.updateOne(filter, updatedDoc);
+    res.send(result); // Ensure the result is sent back
+  });
+
+    // reject article
+    app.patch('/articles-req/reject/:id', verifyToken, verifyAdmin, async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const updatedDoc = {
+        $set: {
+          status: 'Rejected', // Update status field to 'Rejected'
+          approved: false // If you want to maintain the approved field as well
+        }
+      };
+      const result = await articlesReqCollection.updateOne(filter, updatedDoc);
+      res.send(result); // Ensure the result is sent back
+    });
+
     
       
   
