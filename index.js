@@ -39,6 +39,8 @@ async function run() {
     const usersCollection = client.db('ProtikshaNews').collection('users');
     const publishersCollection = client.db('ProtikshaNews').collection('publishers');
     const articlesReqCollection = client.db('ProtikshaNews').collection('articles');
+    const subscriptionsCollection = client.db('ProtikshaNews').collection('subscriptions');
+
 
     // JWT Verification Middleware
     const verifyToken = (req, res, next) => {
@@ -274,6 +276,72 @@ async function run() {
       res.send(result);
   });
   
+  // create payment intent
+  app.post('/create-payment-intent', verifyToken, async (req, res) => {
+    const { price } = req.body;
+    const amount = parseInt(price * 100);
+    console.log(amount,'amount intent')
+
+    const paymentIntent = await stripe.paymentIntents.create({
+        amount: amount,
+        currency: 'usd',
+        payment_method_types: ['card']
+    })
+    res.send({
+        clientSecret: paymentIntent.client_secret
+    })
+})
+
+// subscriptions related api
+app.post('/subscriptions', verifyToken, async (req, res) => {
+  try {
+    const { subscriptionPeriod, subscriptionCost, paymentIntentId } = req.body;
+
+    // Validate input data
+    if (!subscriptionPeriod || !subscriptionCost || !paymentIntentId) {
+      return res.status(400).send({ success: false, message: 'Missing required fields' });
+    }
+
+    // Verify payment intent status (Stripe logic)
+    const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+
+    if (paymentIntent.status !== 'succeeded') {
+      return res.status(400).send({ success: false, message: 'Payment not successful' });
+    }
+
+    // Assuming the user details (name and email) are passed along with the request.
+    // If using a JWT token, you can extract the user's information from `req.decoded`
+    const { email, name } = req.decoded;  // Adjust according to how you store the user's data in the token
+
+    // Save subscription details to the database
+    const subscriptionData = {
+      subscriptionPeriod,
+      subscriptionCost,
+      paymentIntentId,
+      userEmail: email,  // Use decoded email
+      name: name || 'Default User', // Use name from token, fallback to 'Default User' if unavailable
+      timestamp: new Date(), // Set the current date
+    };
+
+    const result = await subscriptionsCollection.insertOne(subscriptionData);
+
+    // Respond with the inserted document ID
+    res.status(201).send({
+      success: true,
+      message: 'Subscription saved successfully',
+      subscriptionId: result.insertedId,
+    });
+  } catch (error) {
+    console.error('Error saving subscription:', error);
+    res.status(500).send({
+      success: false,
+      message: 'Failed to save subscription',
+      error: error.message,
+    });
+  }
+});
+
+
 
     
       
