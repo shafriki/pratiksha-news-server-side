@@ -302,30 +302,36 @@ app.post('/subscriptions', verifyToken, async (req, res) => {
       return res.status(400).send({ success: false, message: 'Missing required fields' });
     }
 
-    // Verify payment intent status (Stripe logic)
-    const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
-
-    if (paymentIntent.status !== 'succeeded') {
-      return res.status(400).send({ success: false, message: 'Payment not successful' });
+    // Validate subscription cost (should be a positive number)
+    if (typeof subscriptionCost !== 'number' || subscriptionCost <= 0) {
+      return res.status(400).send({ success: false, message: 'Invalid subscription cost' });
     }
 
-    // Assuming the user details (name and email) are passed along with the request.
-    // If using a JWT token, you can extract the user's information from `req.decoded`
-    const { email, name } = req.decoded;  // Adjust according to how you store the user's data in the token
+    // Verify payment intent status (Stripe logic)
+    let paymentIntent;
+    try {
+      paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+    } catch (stripeError) {
+      return res.status(400).send({ success: false, message: 'Invalid payment intent ID' });
+    }
 
-    // Save subscription details to the database
+    if (paymentIntent.status !== 'succeeded') {
+      return res.status(400).send({ success: false, message: `Payment failed: ${paymentIntent.status}` });
+    }
+
+    const { email, name } = req.decoded;
+    
     const subscriptionData = {
       subscriptionPeriod,
       subscriptionCost,
       paymentIntentId,
-      userEmail: email,  // Use decoded email
-      name: name || 'Default User', // Use name from token, fallback to 'Default User' if unavailable
-      timestamp: new Date(), // Set the current date
+      userEmail: email,  
+      name: name || email,  // Use email as fallback if name is not provided
+      timestamp: new Date(), 
     };
 
     const result = await subscriptionsCollection.insertOne(subscriptionData);
 
-    // Respond with the inserted document ID
     res.status(201).send({
       success: true,
       message: 'Subscription saved successfully',
