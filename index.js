@@ -5,6 +5,7 @@ const morgan = require('morgan');
 const jwt = require('jsonwebtoken');
 const { MongoClient, ServerApiVersion } = require('mongodb');
 const { ObjectId } = require('mongodb'); 
+const stripe = require('stripe')(process.env.PAYMENT_SECRET_KEY)
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -380,6 +381,32 @@ async function run() {
       const result = await usersCollection.findOne(query);
       res.send(result);
     });
+
+    // Update user profile
+    app.put('/users/:email', async (req, res) => {
+      const email = req.params.email;
+      const updateData = req.body;
+    
+      if (!email || !updateData) {
+        return res.status(400).send({ message: "Invalid request" });
+      }
+    
+      const filter = { email };
+      const updateDoc = { $set: updateData };
+    
+      try {
+        const result = await usersCollection.updateOne(filter, updateDoc);
+        if (result.matchedCount === 0) {
+          return res.status(404).send({ message: "User not found" });
+        }
+        res.send({ success: true, message: "Profile updated successfully" });
+      } catch (error) {
+        console.error('Error updating profile:', error); // Log the error for debugging
+        res.status(500).send({ error: "Failed to update profile" });
+      }
+    });
+    
+    
 
   } catch (err) {
     console.error(err);
