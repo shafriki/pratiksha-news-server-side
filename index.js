@@ -192,16 +192,19 @@ async function run() {
     // reject article
     app.patch('/articles-req/reject/:id', verifyToken, verifyAdmin, async (req, res) => {
       const id = req.params.id;
+      const { reason } = req.body; // Get the reason from the request body
       const filter = { _id: new ObjectId(id) };
       const updatedDoc = {
-        $set: {
-          status: 'Rejected', // Update status field to 'Rejected'
-          approved: false 
-        }
+          $set: {
+              status: 'Rejected', // Update status to 'Rejected'
+              approved: false,
+              rejectReason: reason, // Save the rejection reason
+          },
       };
       const result = await articlesReqCollection.updateOne(filter, updatedDoc);
-      res.send(result); 
-    });
+      res.send(result);
+  });
+  
 
     
       
