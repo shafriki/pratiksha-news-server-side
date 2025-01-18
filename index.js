@@ -150,6 +150,46 @@ async function run() {
         res.send(result);
     })
 
+    app.put('/articles-req/update/:id', verifyToken, async (req, res) => {
+      const id = req.params.id;
+      const updatedArticleData = req.body; 
+  
+      
+      const query = { _id: new ObjectId(id) };
+      const options = { upsert: false }; 
+  
+      
+      const updateDoc = {
+          $set: {
+              title: updatedArticleData.title,
+              description: updatedArticleData.content,  
+              photoURL: updatedArticleData.image,  
+              authorName: updatedArticleData.authorName,
+              authorEmail: updatedArticleData.authorEmail,
+              status: updatedArticleData.status,
+              postedDate: updatedArticleData.postedDate,
+              views: updatedArticleData.views,
+          }
+      };
+  
+      try {
+          const result = await articlesReqCollection.updateOne(query, updateDoc, options);
+  
+          // If no document was updated (could be due to no changes or invalid ID)
+          if (result.modifiedCount === 0) {
+              return res.status(404).send({ message: "Article not found or no changes made" });
+          }
+  
+          // Successfully updated
+          res.send({ message: "Article updated successfully", result });
+      } catch (error) {
+          console.error(error);
+          res.status(500).send({ message: "Failed to update article", error });
+      }
+  });
+  
+  
+
     // Get articles by user's email
     app.get('/my-articles/:email', verifyToken, async (req, res) => {
       const email = req.params.email; // Extract email from request parameters
