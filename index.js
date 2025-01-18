@@ -110,6 +110,20 @@ async function run() {
         res.send(result);
       });
 
+      // delete article by ID
+      app.delete('/delete-article/:id', verifyToken, async (req, res) => {
+        const articleId = req.params.id;
+        const query = { _id: new ObjectId(articleId) }; // Assuming ObjectId is used for MongoDB IDs
+        const result = await articlesReqCollection.deleteOne(query);
+        
+        if (result.deletedCount === 1) {
+          res.send({ message: 'Article deleted successfully' });
+        } else {
+          res.status(404).send({ message: 'Article not found' });
+        }
+      });
+
+
      
       app.get('/articles-req', async (req, res) => {
         const { searchTerm } = req.query;  
@@ -135,6 +149,20 @@ async function run() {
         const result = await articlesReqCollection.findOne(query)
         res.send(result);
     })
+
+    // Get articles by user's email
+    app.get('/my-articles/:email', verifyToken, async (req, res) => {
+      const email = req.params.email; // Extract email from request parameters
+      const query = { email: email }; // Query for matching the email field
+      try {
+        const result = await articlesReqCollection.find(query).toArray(); // Find all matching documents
+        res.send(result); // Send the resulting articles to the client
+      } catch (error) {
+        console.error('Error fetching articles by email:', error); // Log any errors for debugging
+        res.status(500).send({ message: 'Internal Server Error', error }); // Send a server error response
+      }
+    });
+
 
     // articles view count related api
     app.put('/articles-req/view/:id', async (req, res) => {
