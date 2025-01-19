@@ -34,8 +34,8 @@ const client = new MongoClient(uri, {
 
 async function run() {
   try {
-    await client.connect();
-    console.log('Pinged your deployment. Successfully connected to MongoDB!');
+    // await client.connect();
+    // console.log('Pinged your deployment. Successfully connected to MongoDB!');
 
     const usersCollection = client.db('ProtikshaNews').collection('users');
     const publishersCollection = client.db('ProtikshaNews').collection('publishers');
@@ -46,7 +46,7 @@ async function run() {
     cron.schedule('0 * * * *', async () => {
       try {
         const currentTime = new Date();
-        console.log(`Cron job started at ${currentTime.toISOString()}`);
+        // console.log(`Cron job started at ${currentTime.toISOString()}`);
     
         // Find and update expired subscriptions
         const expiredUsers = await usersCollection.updateMany(
@@ -55,16 +55,14 @@ async function run() {
             subscriptionExpiry: { $lte: currentTime }
           },
           {
-            $set: { role: 'viewer' }, // Update role to viewer
-            $unset: { subscriptionExpiry: '' } // Optionally remove the subscriptionExpiry field
+            $set: { role: 'viewer' }, 
+            $unset: { subscriptionExpiry: '' } 
           }
         );
     
-        console.log(`${expiredUsers.modifiedCount} subscriptions expired and reverted.`);
+        // console.log(`${expiredUsers.modifiedCount} subscriptions expired and reverted.`);
       } catch (error) {
         console.error('Error cleaning expired subscriptions:', error);
-        // Optional: Send an alert (e.g., email or logging service)
-        // sendErrorAlert(error); // Add your alerting function here
       }
     });
     
@@ -110,7 +108,6 @@ async function run() {
         const isAdmin = user?.role === 'admin';
     
         if (!isPremiumUser && !isAdmin) {
-          // If subscription expired, revert user to normal role
           if (user?.role === 'premium' && user?.subscriptionExpiry <= currentTime) {
             await usersCollection.updateOne({ email }, { $set: { role: 'viewer' }, $unset: { subscriptionExpiry: "" } });
           }
@@ -174,7 +171,7 @@ async function run() {
       // delete article by ID
       app.delete('/delete-article/:id', verifyToken, async (req, res) => {
         const articleId = req.params.id;
-        const query = { _id: new ObjectId(articleId) }; // Assuming ObjectId is used for MongoDB IDs
+        const query = { _id: new ObjectId(articleId) }; 
         const result = await articlesReqCollection.deleteOne(query);
         
         if (result.deletedCount === 1) {
@@ -205,7 +202,6 @@ async function run() {
 
       app.get('/premium-articles', async (req, res) => {
         try {
-          // Define the query for fetching premium articles
           const query = { isPremium: true };
       
           const result = await articlesReqCollection.find(query).toArray();
@@ -250,7 +246,6 @@ async function run() {
       try {
           const result = await articlesReqCollection.updateOne(query, updateDoc, options);
   
-          // If no document was updated (could be due to no changes or invalid ID)
           if (result.modifiedCount === 0) {
               return res.status(404).send({ message: "Article not found or no changes made" });
           }
@@ -267,14 +262,14 @@ async function run() {
 
     // Get articles by user's email
     app.get('/my-articles/:email', verifyToken, async (req, res) => {
-      const email = req.params.email; // Extract email from request parameters
-      const query = { email: email }; // Query for matching the email field
+      const email = req.params.email; 
+      const query = { email: email }; 
       try {
-        const result = await articlesReqCollection.find(query).toArray(); // Find all matching documents
-        res.send(result); // Send the resulting articles to the client
+        const result = await articlesReqCollection.find(query).toArray(); 
+        res.send(result); 
       } catch (error) {
-        console.error('Error fetching articles by email:', error); // Log any errors for debugging
-        res.status(500).send({ message: 'Internal Server Error', error }); // Send a server error response
+        console.error('Error fetching articles by email:', error); 
+        res.status(500).send({ message: 'Internal Server Error', error }); 
       }
     });
 
@@ -306,8 +301,8 @@ async function run() {
       try {
           const result = await articlesReqCollection
               .find()
-              .sort({ viewCount: -1 })  // Sort by view count in descending order
-              .limit(6)  // Limit to 6 articles
+              .sort({ viewCount: -1 })  
+              .limit(6)  
               .toArray();
           res.send(result);
       } catch (error) {
@@ -324,24 +319,24 @@ async function run() {
     const filter = { _id: new ObjectId(id) };
     const updatedDoc = {
       $set: {
-        status: 'Approved', // Update status field to 'Approved'
-        approved: true // If you want to maintain the approved field as well
+        status: 'Approved', 
+        approved: true 
       }
     };
     const result = await articlesReqCollection.updateOne(filter, updatedDoc);
-    res.send(result); // Ensure the result is sent back
+    res.send(result); 
   });
 
     // reject article
     app.patch('/articles-req/reject/:id', verifyToken, verifyAdmin, async (req, res) => {
       const id = req.params.id;
-      const { reason } = req.body; // Get the reason from the request body
+      const { reason } = req.body; 
       const filter = { _id: new ObjectId(id) };
       const updatedDoc = {
           $set: {
-              status: 'Rejected', // Update status to 'Rejected'
+              status: 'Rejected', 
               approved: false,
-              rejectReason: reason, // Save the rejection reason
+              rejectReason: reason, 
           },
       };
       const result = await articlesReqCollection.updateOne(filter, updatedDoc);
@@ -365,7 +360,7 @@ app.patch('/articles-req/premium/:id', verifyToken, verifyAdmin, async (req, res
   app.post('/create-payment-intent', verifyToken, async (req, res) => {
     const { price } = req.body;
     const amount = parseInt(price * 100);
-    console.log(amount,'amount intent')
+    // console.log(amount,'amount intent')
 
     const paymentIntent = await stripe.paymentIntents.create({
         amount: amount,
@@ -403,7 +398,7 @@ app.post('/subscriptions', verifyToken, async (req, res) => {
     let subscriptionExpiry = new Date();
     switch (subscriptionPeriod) {
       case '1min':
-        subscriptionExpiry.setSeconds(subscriptionExpiry.getSeconds() + 30); // 30 seconds
+        subscriptionExpiry.setSeconds(subscriptionExpiry.getSeconds() + 30); 
         break;
       case '1':
         subscriptionExpiry.setDate(subscriptionExpiry.getDate() + 1);
@@ -452,7 +447,6 @@ app.post('/users/:email', async (req, res) => {
 
   const isExist = await usersCollection.findOne(query);
 
-  // If the user exists, check if the subscription is expired and update role to 'viewer'
   if (isExist) {
     const currentSubscriptionExpiry = isExist.subscriptionExpiry;
 
@@ -463,7 +457,7 @@ app.post('/users/:email', async (req, res) => {
         { $set: { role: 'viewer', subscriptionExpiry: null } }
       );
     }
-    return res.send(isExist);  // Send back the existing user data (now with 'viewer' role if expired)
+    return res.send(isExist);  
   }
 
   // If user doesn't exist, create a new user with 'viewer' role
@@ -558,9 +552,7 @@ app.post('/users/:email', async (req, res) => {
       const currentDate = new Date();
       const subscriptionExpiry = new Date(user.subscriptionExpiry);
     
-      // Check if the subscription has expired and update the role to 'viewer'
       if (subscriptionExpiry && subscriptionExpiry <= currentDate) {
-        // Subscription expired, update role to 'viewer' and reset subscriptionExpiry
         await usersCollection.updateOne(
           { email },
           { $set: { role: 'viewer', subscriptionExpiry: null } }
@@ -659,7 +651,7 @@ app.post('/users/:email', async (req, res) => {
         }
         res.send({ success: true, message: "Profile updated successfully" });
       } catch (error) {
-        console.error('Error updating profile:', error); // Log the error for debugging
+        console.error('Error updating profile:', error); 
         res.status(500).send({ error: "Failed to update profile" });
       }
     });
@@ -677,5 +669,5 @@ app.get('/', (req, res) => {
 });
 
 app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
+  // console.log(`Server running on port ${port}`);
 });
