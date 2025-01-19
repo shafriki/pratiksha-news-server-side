@@ -376,7 +376,7 @@ app.post('/subscriptions', verifyToken, async (req, res) => {
     let subscriptionExpiry = new Date();
     switch (subscriptionPeriod) {
       case '1min':
-        subscriptionExpiry.setMinutes(subscriptionExpiry.getMinutes() + 1);
+        subscriptionExpiry.setSeconds(subscriptionExpiry.getSeconds() + 30); // 30 seconds
         break;
       case '1':
         subscriptionExpiry.setDate(subscriptionExpiry.getDate() + 1);
@@ -412,6 +412,7 @@ app.post('/subscriptions', verifyToken, async (req, res) => {
     });
   }
 });
+
 
 
 
