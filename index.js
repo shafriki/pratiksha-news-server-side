@@ -3,6 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
 const jwt = require('jsonwebtoken');
+const cron = require('node-cron');
 const { MongoClient, ServerApiVersion } = require('mongodb');
 const { ObjectId } = require('mongodb'); 
 const stripe = require('stripe')(process.env.PAYMENT_SECRET_KEY)
@@ -41,6 +42,33 @@ async function run() {
     const articlesReqCollection = client.db('ProtikshaNews').collection('articles');
     const subscriptionsCollection = client.db('ProtikshaNews').collection('subscriptions');
 
+    // Schedule the cron job to run every hour
+    cron.schedule('0 * * * *', async () => {
+      try {
+        const currentTime = new Date();
+        console.log(`Cron job started at ${currentTime.toISOString()}`);
+    
+        // Find and update expired subscriptions
+        const expiredUsers = await usersCollection.updateMany(
+          {
+            role: 'premium',
+            subscriptionExpiry: { $lte: currentTime }
+          },
+          {
+            $set: { role: 'user' },
+            $unset: { subscriptionExpiry: '' } // Optionally remove the subscriptionExpiry field
+          }
+        );
+    
+        console.log(`${expiredUsers.modifiedCount} subscriptions expired and reverted.`);
+      } catch (error) {
+        console.error('Error cleaning expired subscriptions:', error);
+        // Optional: Send an alert (e.g., email or logging service)
+        // sendErrorAlert(error); // Add your alerting function here
+      }
+    });
+    
+
 
     // JWT Verification Middleware
     const verifyToken = (req, res, next) => {
@@ -68,6 +96,34 @@ async function run() {
       }
       next();
     };
+
+    // Premium User Role Verification Middleware
+    const verifyPremiumUserOrAdmin = async (req, res, next) => {
+      const email = req.decoded.email;
+      const query = { email: email };
+    
+      try {
+        const user = await usersCollection.findOne(query);
+    
+        const currentTime = new Date();
+        const isPremiumUser = user?.role === 'premium' && user?.subscriptionExpiry > currentTime;
+        const isAdmin = user?.role === 'admin';
+    
+        if (!isPremiumUser && !isAdmin) {
+          // If subscription expired, revert user to normal role
+          if (user?.role === 'premium' && user?.subscriptionExpiry <= currentTime) {
+            await usersCollection.updateOne({ email }, { $set: { role: 'user' }, $unset: { subscriptionExpiry: "" } });
+          }
+          return res.status(403).send({ message: 'Forbidden access' });
+        }
+        next();
+      } catch (error) {
+        console.error('Error verifying premium user or admin:', error);
+        res.status(500).send({ message: 'Internal Server Error' });
+      }
+    };
+    
+
 
     // Publishers
     app.post('/publishers', verifyToken, verifyAdmin, async (req, res) => {
@@ -292,7 +348,7 @@ async function run() {
     })
 })
 
-// subscriptions related api
+// subscriptions related API
 app.post('/subscriptions', verifyToken, async (req, res) => {
   try {
     const { subscriptionPeriod, subscriptionCost, paymentIntentId } = req.body;
@@ -300,11 +356,6 @@ app.post('/subscriptions', verifyToken, async (req, res) => {
     // Validate input data
     if (!subscriptionPeriod || !subscriptionCost || !paymentIntentId) {
       return res.status(400).send({ success: false, message: 'Missing required fields' });
-    }
-
-    // Validate subscription cost (should be a positive number)
-    if (typeof subscriptionCost !== 'number' || subscriptionCost <= 0) {
-      return res.status(400).send({ success: false, message: 'Invalid subscription cost' });
     }
 
     // Verify payment intent status (Stripe logic)
@@ -319,23 +370,49 @@ app.post('/subscriptions', verifyToken, async (req, res) => {
       return res.status(400).send({ success: false, message: `Payment failed: ${paymentIntent.status}` });
     }
 
-    const { email, name } = req.decoded;
-    
-    const subscriptionData = {
-      subscriptionPeriod,
-      subscriptionCost,
-      paymentIntentId,
-      userEmail: email,  
-      name: name || email,  // Use email as fallback if name is not provided
-      timestamp: new Date(), 
-    };
+    const { email } = req.decoded;
 
-    const result = await subscriptionsCollection.insertOne(subscriptionData);
+    // Calculate subscription expiry
+    let subscriptionExpiry = new Date();
+
+    switch (subscriptionPeriod) {
+      case '1min':
+        subscriptionExpiry.setMinutes(subscriptionExpiry.getMinutes() + 1);
+        break;
+      case '1':
+        subscriptionExpiry.setDate(subscriptionExpiry.getDate() + 1);
+        break;
+      case '5':
+        subscriptionExpiry.setDate(subscriptionExpiry.getDate() + 5);
+        break;
+      case '10':
+        subscriptionExpiry.setDate(subscriptionExpiry.getDate() + 10);
+        break;
+      default:
+        return res.status(400).send({ success: false, message: 'Invalid subscription period' });
+    }
+
+    // Check if the subscription has expired before updating
+    const user = await usersCollection.findOne({ email });
+    if (user && user.subscriptionExpiry && new Date(user.subscriptionExpiry) <= new Date()) {
+      // If subscription expired, reset role to 'viewer'
+      await usersCollection.updateOne(
+        { email },
+        { $set: { role: 'viewer', subscriptionExpiry: null } }
+      );
+    }
+
+    // Update user's subscription in the database (only if they have an active subscription)
+    const updateResult = await usersCollection.updateOne(
+      { email },
+      { $set: { role: 'premium', subscriptionExpiry } }
+    );
 
     res.status(201).send({
       success: true,
       message: 'Subscription saved successfully',
-      subscriptionId: result.insertedId,
+      subscriptionExpiry,
+      updateResult,
     });
   } catch (error) {
     console.error('Error saving subscription:', error);
@@ -348,10 +425,39 @@ app.post('/subscriptions', verifyToken, async (req, res) => {
 });
 
 
+// update premium to viwer
+app.post('/users/:email', async (req, res) => {
+  const email = req.params.email;
+  const query = { email };
+  const user = req.body;
 
+  const isExist = await usersCollection.findOne(query);
+
+  // If the user exists, check if the subscription is expired and update role to 'viewer'
+  if (isExist) {
+    const currentSubscriptionExpiry = isExist.subscriptionExpiry;
     
-      
-  
+    if (currentSubscriptionExpiry && new Date(currentSubscriptionExpiry) <= new Date()) {
+      // Subscription expired, update role to 'viewer'
+      await usersCollection.updateOne(
+        { email },
+        { $set: { role: 'viewer', subscriptionExpiry: null } }
+      );
+    }
+    return res.send(isExist);  // Send back the existing user data (now with 'viewer' role if expired)
+  }
+
+  // If user doesn't exist, create a new user with 'viewer' role
+  const result = await usersCollection.insertOne({
+    ...user,
+    role: 'viewer',
+    timestamp: new Date(),
+  });
+  res.send(result);
+});
+
+
+ 
 
     // Get All Publishers
     app.get('/publishers', async (req, res) => {
@@ -393,7 +499,7 @@ app.post('/subscriptions', verifyToken, async (req, res) => {
       const result = await usersCollection.insertOne({
         ...user,
         role: 'viewer',
-        timestamp: Date.now(),
+        timestamp: new Date(),
       });
       res.send(result);
     });
