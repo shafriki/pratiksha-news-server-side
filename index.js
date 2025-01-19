@@ -517,16 +517,30 @@ app.post('/users/:email', async (req, res) => {
       res.send({ message: 'Role updated successfully.' });
     });
 
-    // Get User Role
+       // Get User Role
     app.get('/users/role/:email', async (req, res) => {
       const email = req.params.email;
       const query = { email };
       const user = await usersCollection.findOne(query);
-
+    
       if (!user) {
         return res.status(404).send({ message: 'User not found.' });
       }
-
+    
+      const currentDate = new Date();
+      const subscriptionExpiry = new Date(user.subscriptionExpiry);
+    
+      // Check if the subscription has expired and update the role to 'viewer'
+      if (subscriptionExpiry && subscriptionExpiry <= currentDate) {
+        // Subscription expired, update role to 'viewer' and reset subscriptionExpiry
+        await usersCollection.updateOne(
+          { email },
+          { $set: { role: 'viewer', subscriptionExpiry: null } }
+        );
+        // Update the user object after role change
+        user.role = 'viewer';
+      }
+    
       res.send({ role: user.role });
     });
 
