@@ -185,7 +185,7 @@ async function run() {
       });
 
 
-     
+    //  all articles 
       app.get('/articles-req', async (req, res) => {
         const { searchTerm } = req.query;  
         
@@ -202,6 +202,20 @@ async function run() {
           res.status(500).send({ message: 'Error fetching article requests' });
         }
       });
+
+      app.get('/premium-articles', async (req, res) => {
+        try {
+          // Define the query for fetching premium articles
+          const query = { isPremium: true };
+      
+          const result = await articlesReqCollection.find(query).toArray();
+          res.send(result);
+        } catch (error) {
+          console.error('Error fetching premium articles:', error);
+          res.status(500).send({ message: 'Error fetching premium articles' });
+        }
+      });
+      
 
       //get single articles
       app.get('/articles-req/:id', async (req, res) => {
