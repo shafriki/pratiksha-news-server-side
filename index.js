@@ -588,6 +588,50 @@ app.post('/users/:email', async (req, res) => {
       res.send(result);
     });
 
+    // Get Only Viewer Users
+    app.get('/viewer-users', async (req, res) => {
+      const { search } = req.query;
+      const query = {
+        role: 'viewer',
+        ...(search && {
+          $or: [
+            { name: { $regex: search, $options: 'i' } },
+            { email: { $regex: search, $options: 'i' } },
+          ],
+        }),
+      };
+
+      try {
+        const result = await usersCollection.find(query).toArray();
+        res.send(result);
+      } catch (error) {
+        res.status(500).send({ message: 'Error retrieving viewer users' });
+      }
+    });
+
+    // Get Only Premium Users
+      app.get('/premium-users', async (req, res) => {
+        const { search } = req.query;
+        const query = {
+          role: 'premium',
+          ...(search && {
+            $or: [
+              { name: { $regex: search, $options: 'i' } },
+              { email: { $regex: search, $options: 'i' } },
+            ],
+          }),
+        };
+
+        try {
+          const result = await usersCollection.find(query).toArray();
+          res.send(result);
+        } catch (error) {
+          res.status(500).send({ message: 'Error retrieving premium users' });
+        }
+      });
+
+
+
     // Get User By Email
     app.get('/users/:email', verifyToken, async (req, res) => {
       const email = req.params.email;
