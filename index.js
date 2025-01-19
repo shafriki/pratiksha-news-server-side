@@ -333,6 +333,19 @@ async function run() {
       const result = await articlesReqCollection.updateOne(filter, updatedDoc);
       res.send(result);
   });
+
+  // article make premium
+app.patch('/articles-req/premium/:id', verifyToken, verifyAdmin, async (req, res) => {
+  const id = req.params.id;
+  const filter = { _id: new ObjectId(id) };
+  const updatedDoc = {
+      $set: {
+          isPremium: true, 
+      },
+  };
+  const result = await articlesReqCollection.updateOne(filter, updatedDoc);
+  res.send(result); 
+});
   
   // create payment intent
   app.post('/create-payment-intent', verifyToken, async (req, res) => {
