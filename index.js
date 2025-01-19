@@ -55,7 +55,7 @@ async function run() {
             subscriptionExpiry: { $lte: currentTime }
           },
           {
-            $set: { role: 'user' },
+            $set: { role: 'viewer' }, // Update role to viewer
             $unset: { subscriptionExpiry: '' } // Optionally remove the subscriptionExpiry field
           }
         );
@@ -112,7 +112,7 @@ async function run() {
         if (!isPremiumUser && !isAdmin) {
           // If subscription expired, revert user to normal role
           if (user?.role === 'premium' && user?.subscriptionExpiry <= currentTime) {
-            await usersCollection.updateOne({ email }, { $set: { role: 'user' }, $unset: { subscriptionExpiry: "" } });
+            await usersCollection.updateOne({ email }, { $set: { role: 'viewer' }, $unset: { subscriptionExpiry: "" } });
           }
           return res.status(403).send({ message: 'Forbidden access' });
         }
@@ -122,6 +122,8 @@ async function run() {
         res.status(500).send({ message: 'Internal Server Error' });
       }
     };
+    
+    
     
 
 
@@ -353,7 +355,6 @@ app.post('/subscriptions', verifyToken, async (req, res) => {
   try {
     const { subscriptionPeriod, subscriptionCost, paymentIntentId } = req.body;
 
-    // Validate input data
     if (!subscriptionPeriod || !subscriptionCost || !paymentIntentId) {
       return res.status(400).send({ success: false, message: 'Missing required fields' });
     }
@@ -372,9 +373,7 @@ app.post('/subscriptions', verifyToken, async (req, res) => {
 
     const { email } = req.decoded;
 
-    // Calculate subscription expiry
     let subscriptionExpiry = new Date();
-
     switch (subscriptionPeriod) {
       case '1min':
         subscriptionExpiry.setMinutes(subscriptionExpiry.getMinutes() + 1);
@@ -392,17 +391,7 @@ app.post('/subscriptions', verifyToken, async (req, res) => {
         return res.status(400).send({ success: false, message: 'Invalid subscription period' });
     }
 
-    // Check if the subscription has expired before updating
-    const user = await usersCollection.findOne({ email });
-    if (user && user.subscriptionExpiry && new Date(user.subscriptionExpiry) <= new Date()) {
-      // If subscription expired, reset role to 'viewer'
-      await usersCollection.updateOne(
-        { email },
-        { $set: { role: 'viewer', subscriptionExpiry: null } }
-      );
-    }
-
-    // Update user's subscription in the database (only if they have an active subscription)
+    // Update user's subscription status to premium if valid
     const updateResult = await usersCollection.updateOne(
       { email },
       { $set: { role: 'premium', subscriptionExpiry } }
@@ -425,6 +414,8 @@ app.post('/subscriptions', verifyToken, async (req, res) => {
 });
 
 
+
+
 // update premium to viwer
 app.post('/users/:email', async (req, res) => {
   const email = req.params.email;
@@ -436,7 +427,7 @@ app.post('/users/:email', async (req, res) => {
   // If the user exists, check if the subscription is expired and update role to 'viewer'
   if (isExist) {
     const currentSubscriptionExpiry = isExist.subscriptionExpiry;
-    
+
     if (currentSubscriptionExpiry && new Date(currentSubscriptionExpiry) <= new Date()) {
       // Subscription expired, update role to 'viewer'
       await usersCollection.updateOne(
@@ -455,6 +446,7 @@ app.post('/users/:email', async (req, res) => {
   });
   res.send(result);
 });
+
 
 
  
