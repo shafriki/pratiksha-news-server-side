@@ -13,7 +13,7 @@ const port = process.env.PORT || 5000;
 
 // Middleware
 const corsOptions = {
-  origin: ['http://localhost:5173'],
+  origin: ['http://localhost:5173','https://protikshanews.web.app','https://protikshanews.firebaseapp.com'],
   credentials: true,
   optionSuccessStatus: 200,
 };
