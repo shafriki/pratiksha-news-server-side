@@ -1,8 +1,5 @@
 # Project Name: Pratiksha News(প্রতীক্ষা নিউজ) [Live Link](https://protikshanews.web.app)
 
-# Admin Credentials
-Username: shafriki.05@gmail.com
-Password: Shafriki#5
 
 ## Short Description of Pratiksha News (প্রতীক্ষা নিউজ)
 **Pratiksha News (প্রতীক্ষা নিউজ)** is an innovative full-stack newspaper website designed to enhance the way users access and interact with news. Developed using React, Firebase, Node.js, Express, and MongoDB, it offers a robust and seamless user experience. The platform features trending articles, publisher management, premium subscriptions, and advanced search and filtering options. Users can add articles with images, tags, and publishers, subscribe for exclusive content, and manage their personal dashboards. Admins have powerful tools to oversee users, approve or decline articles, assign premium status, and analyze data through interactive charts. The site implements JWT authentication for secure private routes, responsive design for all devices, and real-time updates for dynamic content. Additional features include intuitive CRUD operations with notifications, engaging animations, and subscription-based access to premium articles. With a focus on functionality, security, and user engagement, **Pratiksha News (প্রতীক্ষা নিউজ)** redefines the standard for modern news aggregation platforms.
